@@ -1,0 +1,337 @@
+---
+title: "ManipulatingData"
+author: "MKJ"
+date: "12/4/2017"
+output: html_document
+---
+
+---
+title: "Pipes and Plotting for RLadies MeetUp"
+---
+
+Data analysis involves a large amount of [janitorwork](http://www.nytimes.com/2014/08/18/technology/for-big-data-scientists-hurdle-to-insights-is-janitor-work.html) -- munging and cleaning data to facilitate downstream data analysis. This lesson demonstrates techniques for data manipulation and analysis with the split-apply-combine strategy. We will use the dplyr package in R to effectively manipulate and conditionally compute summary statistics over subsets of a "big" dataset containing many observations.
+
+**This lesson assumes a [basic familiarity with R](r-basics.html) and [data frames](r-dataframes.html).**
+
+**Recommended reading:** Review the [_Introduction_(10.1)](http://r4ds.had.co.nz/tibbles.html#introduction-4) and [_Tibbles vs. data.frame_ (10.3)](http://r4ds.had.co.nz/tibbles.html#tibbles-vs.data.frame) sections of the [**_R for Data Science_ book**](http://r4ds.had.co.nz/tibbles.html). We will initially be using the `read_*` functions from the [**readr** package](http://readr.tidyverse.org/). These functions load data into a _tibble_ instead of R's traditional data.frame. Tibbles are data frames, but they tweak some older behaviors to make life a little easier. These sections explain the few key small differences between traditional data.frames and tibbles. 
+
+
+## Review
+
+### Our data
+
+The data we are going to look at is cleaned data from the National Health and Nutrition Examination Survey from the CDC.
+
+### Reading in data
+
+We need to load both the dplyr and readr packages for efficiently reading in and displaying this data. Both of them are included in the tidyverse package so we will just install and load that package.
+
+```{r loadpkgs, results='hold'}
+# Load packages
+# install.packages("tidyverse")
+library(tidyverse)
+
+# Read in data
+nh <- read_csv(file="nhanes.csv")
+
+# Display the data
+nh
+
+# Optionally, bring up the data in a viewer window
+# View(nh)
+```
+
+## The dplyr package
+
+The [dplyr package](https://github.com/hadley/dplyr) is a relatively new R package that makes data manipulation fast and easy. It imports functionality from another package called magrittr that allows you to chain commands together into a pipeline that will completely change the way you write R code such that you're writing code the way you're thinking about the problem.
+
+When you read in data with the readr package (`read_csv()`) and you had the dplyr package loaded already, the data frame takes on this "special" class of data frames called a `tbl` (pronounced "tibble"), which you can see with `class(nh)`. If you have other "regular" data frames in your workspace, the `as_tibble()` function will convert it into the special dplyr `tbl` that displays nicely (e.g.: `iris <- as_tibble(iris)`). You don't have to turn all your data frame objects into tibbles, but it does make working with large datasets a bit easier. 
+
+You can read more about tibbles in [Tibbles chapter in _R for Data Science_](http://r4ds.had.co.nz/tibbles.html) or in the [tibbles vignette](https://cran.r-project.org/web/packages/tibble/vignettes/tibble.html). They keep most of the features of data frames, and drop the features that used to be convenient but are now frustrating (i.e. converting character vectors to factors). You can read more about the differences between data frames and tibbles in [this section of the tibbles vignette](https://cran.r-project.org/web/packages/tibble/vignettes/tibble.html#tibbles-vs-data-frames), but the major convenience for us concerns **printing** (aka displaying) a tibble to the screen. When you print (i.e., display) a tibble, it only shows the first 10 rows and all the columns that fit on one screen. It also prints an abbreviated description of the column type. You can control the default appearance with options:
+
+- `options(tibble.print_max = n, tibble.print_min = m)`: if there are more than _n_ rows, print only the first _m_ rows. Use `options(tibble.print_max = Inf)` to always show all rows.
+- `options(tibble.width = Inf)` will always print all columns, regardless of the width of the screen.
+
+## dplyr verbs
+
+The dplyr package gives you a handful of useful **verbs** for managing data. On their own they don't do anything that base R can't do. Here are some of the _single-table_ verbs we'll be working with in this lesson (single-table meaning that they only work on a single table -- contrast that to _two-table_ verbs used for joining data together, which we'll cover in a later lesson).
+
+1. `filter()`
+1. `select()`
+1. `mutate()`
+1. `arrange()`
+1. `summarize()`
+1. `group_by()`
+
+They all take a data frame or tibble as their input for the first argument, and they all return a data frame or tibble as output.
+
+### filter()
+
+If you want to filter **rows** of the data where some condition is true, use the `filter()` function. 
+
+1. The first argument is the data frame you want to filter, e.g. `filter(mnha, ...`.
+2. The second argument is a condition you must satisfy, e.g. `filter(nh, Diabetes == "Yes")`. If you want to satisfy *all* of multiple conditions, you can use the "and" operator, `&`. The "or" operator `|` (the pipe character, usually shift-backslash) will return a subset that meet *any* of the conditions.
+
+- `==`: Equal to
+- `!=`: Not equal to
+- `>`, `>=`: Greater than, greater than or equal to
+- `<`, `<=`: Less than, less than or equal to
+
+Let's try it out. For this to work you have to have already loaded the dplyr package (we loaded it when we ran library(tidyverse)). 
+
+Let's take a look at just the people in the NHanes survey with Diabetes.
+
+```{r filter}
+# First, make sure you've loaded the dplyr package from the tidyverse
+# library(tidyverse)
+
+# Look at just the people with Diabetes
+filter(nh, Diabetes == "Yes")
+
+# Optionally, bring that result up in a View window
+# View(filter(nh, Diabetes == "Yes"))
+
+# Look at multiple Race categories
+unique(nh$Race) #what race categories are there?
+filter(nh, Race =="Asian" | Race =="Black")
+
+# Look at people of or under age 30 whose income greater than or equal to 70K
+filter(nh, Income >= 70000 & Age <= 30)
+
+# YOUR TURN: How many people in the NHanes survey that meet the above two criteria are a racial minority (not white)?
+filter(nh, Income >= 70000 & Age <= 30 & Race != "White")
+```
+
+----
+
+**EXERCISE `r .ex``r .ex=.ex+1`**
+1. Use _filter_ to find out how many people in the 90th percentile for Weight have Diabetes. _Hint:_ see `?quantile` and try `quantile(nh$Weight, probs=.90, na.rm = TRUE)` to see the weight value which is higher than 90% of all the data, then `filter()` based on that. Try wrapping your answer with a `dim()` function so you can see how many there were.
+
+```{r ex_filter, include=F}
+quantile(nh$Weight, probs=.90, na.rm = TRUE)
+dim(filter(nh, Weight >= 104.9)) #504
+dim(filter(nh, Weight >= 104.9 & Diabetes == "Yes")) #101
+101/504 #20% of people in the 90th percentile for weight have diabetes
+```
+
+----
+
+### select()
+
+The `filter()` function allows you to return only certain _rows_ matching a condition. The `select()` function returns only certain _columns_. The first argument is the data, and subsequent arguments are the columns you want.
+
+```{r select}
+# Select just the Pulse and Blood Pressure variables
+select(nh, Pulse, BPSys, BPDia)
+
+# Alternatively, just remove columns. Remove the id and the HomeRooms and HomeOwn columns.
+select(nh, -id, -HomeRooms, -HomeOwn)
+
+# Notice how the original data is unchanged - still have all 32 columns
+nh
+```
+
+### mutate()
+
+The `mutate()` function adds new columns to the data. Remember, it doesn't actually modify the data frame you're operating on, and the result is transient unless you assign it to a new object or reassign it back to itself (generally, not always a good practice). 
+
+The HDL to Total Cholesterol value can be predictive for risk of heart disease. Let's mutate this data to add a new variable called "CholRatio" that is the HDLChol / TotChol.
+
+```{r mutate, eval=F}
+mutate(phys, CholRatio=HDLChol / TotChol)
+```
+
+### arrange()
+
+The `arrange()` function takes a data frame or tbl and arranges (or sorts) by column(s) of interest. The first argument is the data, and subsequent arguments are columns to sort on. Use the `desc()` function to arrange by descending.
+
+```{r arrange}
+# arrange by Testosterone (default: increasing)
+arrange(nh, Testosterone)
+
+# arrange by Weight (descending)
+arrange(nh, desc(Weight))
+```
+
+### summarize()
+
+The `summarize()` function summarizes multiple values to a single value. On its own the `summarize()` function doesn't seem to be all that useful. The dplyr package provides a few convenience functions called `n()` and `n_distinct()` that tell you the number of observations or the number of distinct values of a particular variable.
+
+Notice that summarize takes a data frame and returns a data frame. In this case it's a 1x1 data frame with a single row and a single column. The name of the column, by default is whatever the expression was used to summarize the data. This usually isn't pretty, and if we wanted to work with this resulting data frame later on, we'd want to name that returned value something easier to deal with.
+
+```{r summarize}
+# Get the mean expression for all genes
+summarize(nh, mean(Weight, na.rm = TRUE))
+
+# Use a more friendly name, e.g., meanWeight, or whatever you want to call it.
+summarize(nh, meanWeight=mean(Weight, na.rm = TRUE))
+```
+
+### group_by()
+
+We saw that `summarize()` isn't that useful on its own. Neither is `group_by()` All this does is takes an existing data frame and coverts it into a grouped data frame where operations are performed by group.
+
+```{r groupby}
+nh
+group_by(nh, Race)
+group_by(nh, Race, Diabetes)
+```
+
+The real power comes in where `group_by()` and `summarize()` are used together. First, write the `group_by()` statement. Then wrap the result of that with a call to `summarize()`.
+
+```{r gby_nopipe}
+# Get the mean Weight for each race
+# group_by(nh, Race)
+summarize(group_by(nh, Race), meanWeight=mean(Weight, na.rm = TRUE))
+
+# Get the mean Weight for each race and Diabetes status
+# group_by(nh, Race, Diabetes)
+summarize(group_by(nh, Race, Diabetes), meanWeight=mean(Weight, na.rm = TRUE))
+
+```
+
+## The pipe: **%>%**
+
+### How %>% works
+
+This is where things get awesome. The dplyr package imports functionality from the [magrittr](https://github.com/smbache/magrittr) package that lets you _pipe_ the output of one function to the input of another, so you can avoid nesting functions. It looks like this: **`%>%`**. You don't have to load the magrittr package to use it since dplyr imports its functionality when you load the dplyr package.
+
+Here's the simplest way to use it. Remember the `head()` function. It expects a data frame as input, and the next argument is the number of lines to print. These two commands are identical:
+
+```{r headpipe}
+head(nh, 5)
+nh %>% head(5)
+```
+
+Let's use one of the dplyr verbs.
+
+```{r filterpipe}
+filter(nh, SmokingStatus =="Current")
+nh %>% filter(SmokingStatus =="Current")
+```
+
+Put it all together. Make a summary table of mean weight for each race and diabetes status (first filtering out Diabetes = NA). Then let's round the means to 2 digits and sort the results by the mean weight of each group
+
+```{r tmp, include=F}
+nh %>% 
+  filter(Diabetes != "NA") %>%
+  group_by(Race, Diabetes) %>% 
+  summarize(meanWeight = mean(Weight, na.rm = TRUE)) %>% 
+  mutate(meanWeight=round(meanWeight,2)) %>% 
+  arrange(meanWeight)
+```
+
+### Nesting versus %>% 
+
+So what? 
+
+Now, think about this for a minute. What if we wanted to get the mean weight separately for each Race only for Diabetes = Yes or No, and return a sorted list of those mean weights rounded to two digits? Mentally we would do something like this:
+
+0. Take the `nh` dataset
+0. _then_ `filter()` it for Diabetes Yes/No (!= NA)
+0. _then_ `group_by()` the Race and Diabetes Status
+0. _then_ `summarize()` to get the mean Weight for each group 
+0. _then_ `mutate()` to round the result of the above calculation to two significant digits
+0. _then_ `arrange()` by the rounded mean weight above
+
+But in code, it gets ugly without the pipe.
+
+```{r, results='hide', tidy=TRUE}
+arrange(mutate(summarize(group_by(filter(nh, Diabetes !="NA"), Race, Diabetes), meanWeight=mean(Weight, na.rm = TRUE)), meanWeight=round(meanWeight, 2)), meanWeight)
+```
+
+Now compare that with the mental process of what you're actually trying to accomplish. The way you would do this without pipes is completely inside-out and backwards from the way you express in words and in thought what you want to do. The pipe operator `%>%` allows you to pass the output data frame from one function to the input data frame to another function.
+
+### Piping exercises
+
+**EXERCISE `r .ex``r .ex=.ex+1`**
+
+Here's a warm-up round. Try the following.
+
+Show the BPSys, BPDia, and TotChol for minority people when Weight >= 100kg. _Hint:_ 2 pipes: `filter` and `select`.
+
+```{r, echo=FALSE}
+nh %>% 
+  filter(Race != "White" & Weight >= 100) %>% 
+  select(BPSys, BPDia, TotChol)
+```
+
+Show the four female, current smokers with the highest Testosterone values. Return these womens' Race, Pulse, and Weight. _Hint:_ 4 pipes: `filter`, `arrange`, `head`, and `select`.
+
+```{r, echo=FALSE}
+nh %>% 
+  filter(Gender=="female" & SmokingStatus== "Current") %>% 
+  arrange(desc(Testosterone)) %>% 
+  head(4) %>% 
+  select(Race, Pulse, Weight) 
+```
+
+### Piping into plots
+
+### About ggplot2
+
+**ggplot2** is a widely used R package that extends R's visualization capabilities. It takes the hassle out of things like creating legends, mapping other variables to scales like color, or faceting plots into small multiples. We'll learn about what all these things mean shortly. 
+
+_Where does the "gg" in ggplot2 come from?_ The **ggplot2** package provides an R implementation of Leland Wilkinson's *Grammar of Graphics* (1999). The *Grammar of Graphics* allows you to think beyond the garden variety plot types (e.g. scatterplot, barplot) and the consider the components that make up a plot or graphic, such as how data are represented on the plot (as lines, points, etc.), how variables are mapped to coordinates or plotting shape or color, what transformation or statistical summary is required, and so on. 
+
+Specifically, **ggplot2** allows you to build a plot layer-by-layer by specifying:
+
+- a **geom**, which specifies how the data are represented on the plot (points, lines, bars, etc.),
+- **aesthetics** that map variables in the data to axes on the plot or to plotting size, shape, color, etc.,
+- a **stat**, a statistical transformation or summary of the data applied prior to plotting,
+- **facets**, which we've already seen above, that allow the data to be divided into chunks on the basis of other categorical or continuous variables and the same plot drawn for each chunk.
+
+### Continuous X by Continuous Y
+
+Plot Height by Weight
+```{r}
+nh %>%
+  ggplot(aes(x = Height, y = Weight)) #nothing happened...why not?
+
+nh %>%
+  ggplot(aes(x = Height, y = Weight)) + geom_point()
+```
+
+### Add color by factor(Age)
+Create a new variable called Age2 using mutate and cut that codes Age <= 18 as child and Age >18 as adult. Then color the above plot by Age2
+```{r}
+nh %>%
+  mutate(Age2 = cut(Age, breaks = c(-Inf, 18, Inf), right = FALSE, labels = c("child", "adult"))) %>%
+  ggplot(aes(x = Height, y = Weight, color = Age2)) + geom_point()
+```
+
+### Categorical X, Continuous Y --> Boxplot
+filter out the Race = Other category,
+Plot Race on the X and Weight on the Y. Color the plot by Gender.
+```{r}
+nh %>% 
+  filter(Race != "Other") %>%
+  ggplot(aes(Race, Weight, fill = Gender)) + geom_boxplot()
+```
+
+### Line plot
+Graph age against mean height at that age
+```{r}
+nh %>%
+  group_by(Age) %>%
+  summarize(meanHeight = mean(Height, na.rm = TRUE)) %>%
+  ggplot(aes(Age, meanHeight)) + geom_line()
+```
+
+Color that graph by Race
+**need to add Race into group_by call
+
+```{r}
+nh %>%
+  group_by(Race, Age) %>%
+  summarize(meanHeight = mean(Height, na.rm = TRUE)) %>%
+  ggplot(aes(x = Age, y = meanHeight, color = Race)) + geom_line()
+```
+
+Make it a bit prettier and easier to read
+```{r}
+nh %>%
+  group_by(Race, Age) %>%
+  summarize(meanHeight = mean(Height, na.rm = TRUE)) %>%
+  ggplot(aes(x = Age, y = meanHeight, color = Race)) + geom_smooth(se = FALSE) + theme_classic()
+```
