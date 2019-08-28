@@ -1,0 +1,278 @@
+---
+title: "R-Ladies RMarkdown Tutorial"
+author: "Brigitte Hogan"
+date: "8/27/2019"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+<br><br>
+
+#### Options for recording/ reporting your analysis
+
+- Writing code in the Console -- error prone (especially typo prone!) and hard to keep track of
+
+- R Script + LaTeX/Word -- can be reproducible with careful organization but still error prone
+
+- R Markdown -- code, output, prose all in one place and fully reproducible, can call R scripts as well
+
+#### R Markdown solution
+
+- R Markdown documents are fully **reproducible**, they can be 
+automatically regenerated whenever underlying R code or data changes
+
+- File -> New File -> R Markdown...
+
+- Important features:
+    - An (optional) YAML header surrounded by `---`
+    - R code chunks surrounded by ` ``` `
+    - Text mixed with simple markdown formatting
+        - Human readable! (in RStudio -> Help -> Markdown Quick Reference)
+        - Limited, so not too time consuming to master
+    - Self contained workspace
+<br><br>
+***
+### R Markdown installation
+If you have not yet done so:
+```{r eval=FALSE}
+install.packages("rmarkdown")
+library(rmarkdown)
+```
+
+### YAML Header
+```{r eval=FALSE}
+---
+title: "R-Ladies RMarkdown Tutorial"
+author: "Brigitte Hogan"
+date: "8/26/2019"
+output: html_document
+---
+```
+<br><br>
+
+***
+
+### Output options
+
+- HTML - web ready
+
+- PDF - **requires TeX to be installed!**
+
+- Word - can be useful if collaborators are Word users, but their changes cannot be easily integrated
+
+- Many others
+
+#### PDF Output
+
+If you don't already have LaTeX installed, use TinyTex:
+```{r eval=FALSE}
+install.packages("tinytex") 
+tinytex::install_tinytex() # install TinyTeX
+```
+
+Include `output: pdf_document` in the YAML header
+<br><br>
+
+***
+
+### Using R Code
+
+#### Two options:
+
+- Code chunks
+
+- Inline code
+
+#### Code chunks
+
+- Inserting a new code chunk:
+    + keyboard shortcut Ctrl + Alt + I (OS X: Cmd + Option + I)
+    + the Insert command in the editor toolbar (see other languages as well)
+    + typing the chunk delimiters (\`\`\`{r} to start, \`\`\` to end)
+
+- When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+#### Chunk Options
+
+Chunk output can be customized with knitr options, arguments set in the {} of a chunk header.
+
+Examples:
+
+- `include = FALSE`: code runs and results be used by other chunks, but doesn't appear in finished file
+- `echo = FALSE`:  prevents code, but not the results from appearing in the finished file (useful way to embed figures)
+- `message = FALSE`: messages do not appear in the finished file
+- `warning = FALSE`: warnings do not appear in the finished file
+- `fig.cap = "..."` adds a caption to graphical results
+
+See [R Markdown Reference Guide](https://www.rstudio.com/wp-content/uploads/2015/03/rmarkdown-reference.pdf) for all options.
+
+#### Inline code
+
+Code results can be inserted directly into the text of a .Rmd file by enclosing the code with \` r\`
+<br><br>
+
+***
+
+### Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+#### Figure options
+
+- `fig_width` and `fig_height` control default figure width and height
+
+- `fig_caption` controls whether figures are rendered with captions (default = FALSE)
+
+- `dev` controls graphics device used to render figure (default = pdf)
+<br><br>
+
+### Formatting Text
+[R Markdown Reference Guide](https://www.rstudio.com/wp-content/uploads/2015/03/rmarkdown-reference.pdf)
+[R Markdown Cheat Sheet](https://www.rstudio.com/wp-content/uploads/2016/03/rmarkdown-cheatsheet-2.0.pdf)
+
+*italics* and _italics_
+
+**bold** and __bold__
+
+### Header 1
+
+#### Header 2
+
+etc.
+<br><br>
+
+***
+
+### Using Other Languages
+
+#### View All Options
+```{r}
+names(knitr::knit_engines$get())
+```
+
+
+### Python
+
+If you don't already have reticulate installed:
+```{r eval=FALSE}
+install.packages("reticulate") 
+library(reticulate) # load python engine
+```
+
+**Python example:**
+```{python}
+x = 'hello, python world!'
+print(x.split(' '))
+```
+
+#### Passing code
+
+Language Engines
+
+* The R session is independent from other language sessions within RMarkdown
+* Most engines will execute each code chunk in a separate new session
+* For most languages, objects created in memory in a previous code chunk will not be directly available to latter code chunks
+* **Exceptions:** r, python, and julia
+    + all r code chunks are executed in the same R session
+    + all python code chunks are executed in the same Python session, etc
+    + the R session and the Python session are still independent
+
+Passing Code (Python)
+
+* Values can be passed to or retrieved from the Python session
+* To pass a value to Python, assign to `py$name`, where name is the variable name you want to use in the Python session
+* To retrieve a value from Python, also use `py$name`.
+
+
+**A normal R code chunk**
+
+```{r}
+library(reticulate)
+x = 42
+print(x)
+```
+
+**Modify an R variable**
+
+In the following chunk, the value of `x` on the right hand side
+is `r x`, which was defined in the previous chunk.
+
+```{r}
+x = x + 12
+print(x)
+```
+
+**A Python chunk**
+
+This works fine and as expected. 
+
+```{python}
+x = 42 * 2
+print(x) 
+```
+
+The value of `x` in the Python session is `r py$x`.
+It is not the same `x` as the one in R.
+
+**Modify a Python variable**
+
+```{python}
+x = x + 18 
+print(x)
+```
+
+Retrieve the value of `x` from the Python session within an r chunk:
+
+```{r}
+py$x
+```
+
+Assign to a variable in the Python session from R:
+
+```{r}
+py$y = 1:5
+```
+
+See the value of `y` in the Python session:
+
+```{python}
+print(y)
+```
+<br><br>
+
+#### Python graphics
+
+You can draw plots using the **matplotlib** package in Python.
+
+```{python}
+import matplotlib.pyplot as plt
+plt.plot([0, 2, 1, 4])
+plt.show()
+```
+<br><br>
+
+***
+
+### Sources
+* [Xie, Y, Allaire, JJ & Grolemund, G. 2019-06-03. R Markdown: The Definitive Guide. Chapman & Hall/ CRC.](https://bookdown.org/yihui/rmarkdown/language-engines.html)
+* [R Markdown Reference Guide](https://www.rstudio.com/wp-content/uploads/2015/03/rmarkdown-reference.pdf)
+* [R Markdown Cheat Sheet](https://www.rstudio.com/wp-content/uploads/2016/03/rmarkdown-cheatsheet-2.0.pdf)
